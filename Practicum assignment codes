@@ -1,0 +1,103 @@
+---
+title: "practicum assignment"
+author: "Rohit"
+output:
+  html_document:
+  theme:
+  bootswatch: darkly
+pdf_document: default
+---
+
+```{r , include = FALSE}
+# I will be using 2020 presidential polls data set for the practicum, I will be loading the xlsx file now.
+library(readxl)
+president_file <- read_excel("presidential_polls_2020.xlsx", sheet="Sheet1")
+president_file_1 <- read_excel("presidential_polls_2020.xlsx", sheet="Sheet2")
+head(president_file)
+```
+
+```{r , include = FALSE}
+# First, the code ensures that the open xlsx package is installed and then loads it to work with Excel files. It combines the data from two President files (president_file and president_file_1) into one data frame (combined_President_data) using the rbind() function. Finally, it saves the combined President data to a new Excel file named "combined_President_data.xlsx" in the working directory using the write.xlsx() function.
+library(openxlsx)
+combined_President_data <- rbind(president_file, president_file_1)
+write.xlsx(combined_President_data, "combined_President_data.xlsx")
+```
+
+```{r , include = FALSE}
+# The code snippet provided removes rows with missing data from the combined President data stored in the data frame 'combined_President_data'. It uses the na.omit() function, which identifies and removes any rows containing missing values (represented as NA) across all columns.
+cleaned_president_data <- na.omit(combined_President_data)
+head(cleaned_president_data)
+```
+
+```{r , include = FALSE}
+# The provided code first updates the 'cycle' column in the 'cleaned_president_data' data frame, replacing any occurrence of "20" with "2020". It uses the `ifelse()` function to achieve this transformation. Then, it renames the 'cycle' column to 'year' which is easier to understand, creating a new data frame named 'cleaned_president_data02'.
+library(magrittr)
+library(dplyr)
+library(stringr)
+cleaned_president_data01 <- cleaned_president_data %>%
+  mutate(cycle = ifelse(cycle == "20", "2020", cycle))
+cleaned_president_data02 <- cleaned_president_data01 %>%
+  rename(year = cycle)
+```
+
+```{r , include = FALSE}
+#In this block of code, the cleaned_president_data03 data set is being modified. Each row's 'state' column is checked for specific patterns using str_detect function from the stringr package. If a row's 'state' column contains "WY", it's replaced with "Wyoming"; if it contains "WI", it's replaced with "Wisconsin"; if it contains "NATI", it's replaced with "National".
+cleaned_president_data03 <- cleaned_president_data02 %>%
+  mutate(
+    state = case_when(
+      str_detect(state, "WY") ~ "Wyoming",
+      str_detect(state, "WI") ~ "Wisconsin",
+      str_detect(state, "NATl") ~ "National",
+      TRUE ~ state))
+cleaned_president_data03 %>% count(state)
+```
+
+```{r , include = FALSE}
+#This code is further refining the data on presidential candidates by standardizing the format of their names. Specifically, it's replacing any instances of "Biden" with "Joseph R. Biden Jr.". After this adjustment, the code counts the number of occurrences for each candidate's name. This helps ensure consistency in the data, making it easier to analyze.
+cleaned_president_data04 <- cleaned_president_data03 %>%
+  mutate(
+    candidate_name = case_when(
+      str_detect(candidate_name, "Biden") ~ "Joseph R. Biden Jr.",
+      TRUE ~ candidate_name))
+cleaned_president_data03 %>% count(candidate_name)
+```
+
+```{r , include = FALSE}
+#This code is improving the consistency of data related to polling organizations by standardizing their names.
+cleaned_president_data05 <- cleaned_president_data04 %>%
+  mutate(
+    pollster = case_when(
+      str_detect(pollster, "Morning Con") ~ "Morning Consult",
+      str_detect(pollster, "NA") ~ "Morning Consult",
+      TRUE ~ pollster))
+cleaned_president_data05 %>% count(pollster)
+```
+
+```{r, include=FALSE}
+#This code is used to select specific variables from the cleaned presidential data, including the year, state, candidate name, pollster, sample size, weight, and influence. By focusing on these variables, it narrows down the dataset to only include the information that is most relevant for analysis or visualization. This can help us analyze better trends, patterns, and relationships within the data.
+selected_variables <- c("year","state","candidate_name","pollster","samplesize","weight","influence")
+cleaned_president_data06 <- cleaned_president_data05[selected_variables]
+head(cleaned_president_data06)
+```
+
+```{r, include=FALSE}
+write.xlsx(cleaned_president_data06, "cleaned_president_data06.xlsx")
+```
+
+```{r, include=TRUE}
+#This code produces a box plot depicting the distribution of sample sizes across different states in the dataset. The box plot provides insights into the variability and central tendency of sample sizes within each state, highlighting any outliers or trends. It's useful for comparing sample size distributions between states, helping identify regions with particularly large or small samples.
+library(ggplot2)
+ggplot(cleaned_president_data06, aes(x = state, y = samplesize)) +
+  geom_boxplot() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  labs(title = "Distribution of Sample Size Across States")
+```
+
+```{r, include=TRUE}
+#This code generates a grouped bar plot that displays the sample size across different states, categorized by the pollster who conducted the presidential polling. Each bar represents the sample size for a specific state, and the bars are grouped according to the pollster. The x-axis indicates the states, the y-axis represents the sample size, and different colors are used to differentiate between pollsters. This visualization helps viewers understand how the sample sizes vary across states for each pollster, providing insights into the distribution and scale of polling efforts in different regions during presidential elections.
+ggplot(cleaned_president_data06, aes(x = state, y = samplesize, fill = pollster)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "Sample Size Across States by Pollster", x = "State", y = "Sample Size", fill = "Pollster") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  scale_fill_discrete(name = "Pollster")
+```
